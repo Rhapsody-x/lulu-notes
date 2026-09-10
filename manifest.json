@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "噜噜便签 (Floating Notes)",
+  "version": "2.1",
+  "description": "运行在网页上的悬浮便签，页面自动显示悬浮球",
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "content/styles.js",
+        "content/dom.js",
+        "content/panel.js",
+        "content/bubble.js",
+        "content/notes.js",
+        "content/richtext.js",
+        "content/trash.js",
+        "content/export.js",
+        "content/messaging.js"
+      ]
+    }
+  ],
+  "action": {
+    "default_title": "点击打开/收起悬浮便签面板"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
