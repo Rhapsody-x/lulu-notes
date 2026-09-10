@@ -17,12 +17,9 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     const isCurrentlyOpen = !mainPanel.classList.contains('closed');
     if (shouldBeOpen !== isCurrentlyOpen) {
       if (shouldBeOpen) {
-        alignPanelToBubble();
-        mainPanel.classList.remove('closed');
-        toggleBubble.classList.add('hidden');
+        showPanel();
       } else {
-        mainPanel.classList.add('closed');
-        toggleBubble.classList.remove('hidden');
+        hidePanel();
       }
     }
   }
