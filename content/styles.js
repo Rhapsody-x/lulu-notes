@@ -477,8 +477,11 @@ const APP_STYLES = `
 
   /* --- 侧边贴边模式（100px * 100px 淡蓝半圆贴右） --- */
   #toggle-bubble.side-dock {
-    width: 30px !important;
+    width: 40px !important;
     height: 30px !important;
+    margin-right: -10px !important;
+    padding-right: 10px !important;
+    padding-left: 0 !important;
     background: #a0cfff !important; /* 完美匹配截图淡蓝色 */
     border-radius: 100px 0 0 100px !important;
     right: 0 !important;
@@ -489,9 +492,10 @@ const APP_STYLES = `
     justify-content: center !important;
     box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12) !important;
     padding-left: 5px !important;
+    transition: transform 0.35s cubic-bezier(0.65, 0, 0.35, 1), background 0.25s ease;
   }
   #toggle-bubble.side-dock:hover {
-    transform: scale(1.05);
+    transform: translateX(-5px) !important;
     background: #8ec2f5 !important;
   }
   #toggle-bubble.side-dock #bubble-icon-img,
