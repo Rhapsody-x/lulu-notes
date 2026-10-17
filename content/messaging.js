@@ -45,6 +45,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       hidePanel();
     }
     sendResponse({ success: true });
+    return false;
   }
-  return true;
+  return false;
 });

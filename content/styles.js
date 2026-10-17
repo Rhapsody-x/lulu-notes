@@ -66,11 +66,20 @@ const APP_STYLES = `
     border-radius: 24px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1);
     display: flex; flex-direction: column; padding: 0;
-    transform-origin: bottom center; /* 展开动画原点改到底部中心 */
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+
+    /* 👈 初始正常位置（水平平移为主，不再做中心缩放） */
+    transform: translateX(0);
+    /* 👈 丝滑阻尼缓动：平移与透明度淡入淡出同时进行 */
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease, visibility 0.3s;
     opacity: 1; visibility: visible;
   }
-  #main-panel.closed { opacity: 0; visibility: hidden; transform: scale(0.9); pointer-events: none; }
+  #main-panel.closed {
+    opacity: 0;
+    visibility: hidden;
+    /* 👈 关闭/最小化：向右滑出 60px 并淡出；展开时反向向左滑入 */
+    transform: translateX(60px) !important;
+    pointer-events: none;
+  }
 
   /* --- 头部 --- */
   .header { 

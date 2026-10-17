@@ -23,7 +23,7 @@ function showPanel() {
 
 function hidePanel() {
   saveNotes();
-  mainPanel.classList.add('closed');
+  mainPanel.classList.add('closed'); // 平滑向右滑出消失
   toggleBubble.classList.remove('hidden');
   chrome.storage.local.set({ panelOpen: false });
 }
@@ -138,6 +138,8 @@ function onPanelUp() {
   isPanelDragging = false;
   window.removeEventListener('mousemove', onPanelMove);
   window.removeEventListener('mouseup', onPanelUp);
+
+  mainPanel.style.transform = ''; // 👈 清除拖拽时的行内 transform，交还给 CSS 的滑入/滑出动画接管
 
   // 👈 用户拖动后，持久化保存位置
   if (panelHasMoved) {

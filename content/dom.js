@@ -29,7 +29,7 @@ wrapper.innerHTML = `
   <div id="main-panel" class="closed">
     <!-- 头部：拖拽区域 -->
     <div class="header">
-      <h2>我的便签</h2>
+      <h2>MY NOTES</h2>
       <div class="header-actions">
         <button id="add-btn" title="新建">+</button>
         <button id="menu-btn" title="更多选项">

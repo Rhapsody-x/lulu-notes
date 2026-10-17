@@ -177,16 +177,16 @@ function createNoteElement(id, content, timestamp, isNew = false, shouldCollapse
   });
 
   const delBtn = document.createElement('button');
-  delBtn.className = 'icon-btn delete-btn';
-  delBtn.innerHTML = ICONS.trash;
-  delBtn.addEventListener('click', () => {
-    noteDiv.classList.add('anim-leave');
-    noteDiv.addEventListener('animationend', () => {
-      moveToTrash(id);
-      noteDiv.remove();
-      saveNotes();
-    }, { once: true });
-  });
+    delBtn.className = 'icon-btn delete-btn';
+    delBtn.innerHTML = ICONS.trash;
+    delBtn.addEventListener('click', () => {
+      noteDiv.classList.add('anim-leave');
+      noteDiv.addEventListener('animationend', () => {
+        moveToTrash(id);
+        noteDiv.remove();
+        saveNotes();
+      }, { once: true });
+    });
 
   btnGroup.appendChild(copyBtn);
   btnGroup.appendChild(delBtn);
