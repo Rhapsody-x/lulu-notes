@@ -1,0 +1,28 @@
+/* 桌面壳层：窗口本身是透明无边框的，背景完全交给 Shadow DOM 内的面板 */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+}
+
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 输入区域恢复可选中文本 */
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text;
+}
+
+/* 拖动窗口时避免选中文字/出现原生拖拽残影 */
+body.dragging {
+  cursor: default;
+}
