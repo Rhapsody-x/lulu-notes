@@ -16,6 +16,7 @@ toggleBubble.addEventListener('mousedown', (e) => {
     screenY: e.screenY,
     startX: WIN.current.x,
     startY: WIN.current.y,
+    startTabY: WIN.current.y + SIDE_SHADOW_Y,
     moved: false
   };
   e.preventDefault();
@@ -40,12 +41,9 @@ function onBubbleMove(e) {
       bubbleDragState.moved = true;
       bubbleHasMoved = true;
     }
-    const newY = clampNumber(
-      bubbleDragState.startY + dy,
-      area.top,
-      area.top + area.height - SIDE_SIZE
-    );
-    scheduleWindowMove(area.left + area.width - SIDE_SIZE, newY);
+    // startTabY 为页签坐标，窗口 = 页签 - 阴影留白
+    const next = sideWindowPosFromTabY(clampSideTabY(bubbleDragState.startTabY + dy));
+    scheduleWindowMove(next.x, next.y);
   } else {
     // --- 底部模式：仅允许 X 轴左右拖拽 ---
     const dx = e.screenX - bubbleDragState.screenX;
@@ -76,10 +74,10 @@ async function onBubbleUp() {
   const area = WIN.workArea;
   let pos;
   if (mode === 'side') {
-    pos = {
-      x: area.left + area.width - SIDE_SIZE,
-      y: clampNumber(WIN.current.y, area.top, area.top + area.height - SIDE_SIZE)
-    };
+    // bubblePos 统一存「页签」坐标（旧版本窗口即页签，语义一致）。
+    const tabY = clampSideTabY(WIN.current.y + SIDE_SHADOW_Y);
+    const windowPos = sideWindowPosFromTabY(tabY);
+    pos = { x: windowPos.x, y: tabY };
   } else {
     pos = {
       x: clampNumber(WIN.current.x, area.left, area.left + area.width - BUBBLE_SIZE),
@@ -117,16 +115,12 @@ async function toggleBubbleMode(forceMode) {
   let size;
   let pos;
 
+  let storedTabY;
+
   if (isSide) {
-    size = { width: SIDE_SIZE, height: SIDE_SIZE };
-    pos = {
-      x: area.left + area.width - SIDE_SIZE,
-      y: clampNumber(
-        previous.y + previous.height / 2 - SIDE_SIZE / 2,
-        area.top,
-        area.top + area.height - SIDE_SIZE
-      )
-    };
+    size = { width: SIDE_WINDOW_WIDTH, height: SIDE_WINDOW_HEIGHT };
+    storedTabY = clampSideTabY(previous.y + previous.height / 2 - SIDE_TAB_HEIGHT / 2);
+    pos = sideWindowPosFromTabY(storedTabY);
   } else {
     size = { width: BUBBLE_SIZE, height: BUBBLE_SIZE };
     pos = {
@@ -149,6 +143,6 @@ async function toggleBubbleMode(forceMode) {
   await applyWindowGeometry('bubble', size.width, size.height, pos.x, pos.y);
   Store.set({
     bubbleMode: WIN.bubbleMode,
-    bubblePos: { x: pos.x, y: pos.y }
+    bubblePos: { x: pos.x, y: isSide ? storedTabY : pos.y }
   });
 }

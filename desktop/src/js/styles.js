@@ -42,8 +42,8 @@ const APP_STYLES = `
     display: inline-block;
     pointer-events: none;
     object-fit: contain;
-    /* 增加精准的 PNG 轮廓阴影滤镜 */
-    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
+    /* 半硬边：4px 偏移 + 2px 极小模糊（既不像 16px 那样糊成一团，也不是死硬的贴纸边） */
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.15));
   }
 
   /* --- 备用 SVG 矢量图标样式表 --- */
@@ -53,7 +53,7 @@ const APP_STYLES = `
     display: none;
     pointer-events: none;
     margin: auto;
-    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.15));
   }
 
   /* --- 主面板（天蓝色渐变） --- */
@@ -64,7 +64,8 @@ const APP_STYLES = `
     background: linear-gradient(135deg, #E3F2FD 0%, #90CAF9 100%);
     border: 1px solid rgba(255, 255, 255, 0.8);
     border-radius: 24px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1);
+    /* 极轻光晕：层1 为 0 尺寸（不可见，仅保留双层结构），实际生效的是层2 的 2px 微模糊 + 6% 透明 */
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0.12), 0 0 2px rgba(0, 0, 0, 0.06);
     display: flex; flex-direction: column; padding: 0;
 
     /* 👈 初始正常位置（水平平移为主，不再做中心缩放） */
@@ -578,12 +579,13 @@ const APP_STYLES = `
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12) !important;
+    /* 居中光晕：无偏移 + 2px 微模糊（贴死屏幕的那一侧会被窗口裁掉，但该边在屏幕外，不可见） */
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.12) !important;
     padding-left: 5px !important;
     transition: transform 0.35s cubic-bezier(0.65, 0, 0.35, 1), background 0.25s ease;
   }
   #toggle-bubble.side-dock:hover {
-    transform: translateX(-5px) !important;
+    transform: translateX(-4px) !important;
     background: #8ec2f5 !important;
   }
   #toggle-bubble.side-dock #bubble-icon-img,
@@ -605,17 +607,21 @@ const APP_STYLES = `
     inset: 0;
     width: 100%;
     height: 100%;
+    /* 方案A：原生窗口四周的阴影留白（= 阴影最大外扩 2px），需与 panel.js 的 PANEL_SHADOW_PADDING 一致 */
+    --panel-edge: 2px;
   }
 
-  /* --- 面板模式：面板铺满原生窗口 --- */
+  /* --- 面板模式：面板内缩一圈，把窗口边界让给 box-shadow 绘制 --- */
   :host-context(body.panel-mode) #main-panel {
     position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    inset: var(--panel-edge);
+    width: calc(100% - (var(--panel-edge) * 2));
+    height: calc(100% - (var(--panel-edge) * 2));
     max-height: none;
     border-radius: 24px;
     transform: none;
+    /* 极轻光晕：与基础规则一致（层1 不可见，层2 为 2px 微模糊 + 6%） */
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0.12), 0 0 2px rgba(0, 0, 0, 0.06);
   }
   :host-context(body.panel-mode) #main-panel.closed {
     opacity: 0;
@@ -651,22 +657,29 @@ const APP_STYLES = `
     height: auto;
   }
 
-  /* 侧边贴边：窗口本身只有 36×36，页签填满窗口并保留左圆角 */
+  /* 侧边贴边：原生窗口 42×34，页签 36×30 贴右边缘，左侧 6px / 上下 2px 留白用于绘制阴影
+     （数值需与 panel.js 的 SIDE_TAB_WIDTH / SIDE_TAB_HEIGHT / SIDE_SHADOW_LEFT / SIDE_SHADOW_Y 保持一致） */
   :host-context(body.bubble-mode) #toggle-bubble.side-dock {
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    right: 0 !important;
+    position: fixed;
     left: auto !important;
-    top: 0 !important;
+    right: 0 !important;
+    top: 2px !important; /* = panel.js 的 SIDE_SHADOW_Y */
     bottom: auto !important;
+    width: 36px !important;
+    height: 30px !important;
+    margin: 0 !important;
+    padding: 0 0 0 5px !important;
     border-radius: 100px 0 0 100px !important;
     background: #a0cfff !important;
-    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12) !important;
+    /* 居中光晕：无偏移 + 2px 微模糊（hover 再左移 4px ⇒ 共需 6px，正好等于 6px 留白） */
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.12) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transform: none;
   }
   :host-context(body.bubble-mode) #toggle-bubble.side-dock:hover {
-    transform: none !important;
+    transform: translateX(-4px) !important;
     background: #8ec2f5 !important;
   }
   :host-context(body.bubble-mode) #toggle-bubble.side-dock #bubble-icon-img,

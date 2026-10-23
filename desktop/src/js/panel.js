@@ -8,8 +8,26 @@
 // ================================================================
 
 const BUBBLE_SIZE = 64;
-const SIDE_SIZE = 36;
+
+// 侧边贴边模式（方案 A）：可视页签 36×30 贴在屏幕右边缘；
+// 原生窗口额外留出「居中光晕」阴影所需的绘制空间：左侧 6px、上下各 2px → 窗口 42×34。
+// 需要满足：SIDE_SHADOW_LEFT ≥ |offsetX| + blur + hover 位移 = 0 + 2 + 4 = 6；SIDE_SHADOW_Y ≥ blur = 2。
+// （数值与 styles.js 中 .side-dock 的 box-shadow / top 保持一致）
+const SIDE_TAB_WIDTH = 36;
+const SIDE_TAB_HEIGHT = 30;
+const SIDE_SHADOW_LEFT = 6;
+const SIDE_SHADOW_Y = 2;
+const SIDE_WINDOW_WIDTH = SIDE_TAB_WIDTH + SIDE_SHADOW_LEFT;
+const SIDE_WINDOW_HEIGHT = SIDE_TAB_HEIGHT + SIDE_SHADOW_Y * 2;
+
 const PANEL_WIDTH = 360;
+
+// 方案A：原生窗口比面板四周各多留一圈透明边距，专门给 CSS box-shadow 绘制，
+// 避免阴影被窗口边界裁掉后留下“硬边矩形”的观感。
+// 阴影最大外扩 = blur 2px（两层均无偏移），因此 2px 留白即可（原 10px，进一步收紧死区）。
+// 注意：该值必须与 styles.js 中 :host 的 --panel-edge 保持一致。
+const PANEL_SHADOW_PADDING = 2;
+const PANEL_WINDOW_WIDTH = PANEL_WIDTH + PANEL_SHADOW_PADDING * 2;
 
 const WIN = {
   ready: false,
@@ -125,23 +143,67 @@ function panelHeightForWorkArea() {
   return Math.max(240, Math.min(800, height));
 }
 
-function clampPanelPosition(x, y) {
+// 面板模式下原生窗口的高度 = 面板高度 + 上下阴影留白
+function panelWindowHeight() {
+  return WIN.panelHeight + PANEL_SHADOW_PADDING * 2;
+}
+
+// x / y 为原生窗口左上角坐标（窗口 = 面板 + 四周阴影留白）
+function clampPanelWindowPosition(x, y) {
   const area = WIN.workArea;
-  const maxX = area.left + area.width - PANEL_WIDTH;
-  const maxY = area.top + area.height - WIN.panelHeight;
+  const maxX = area.left + area.width - PANEL_WINDOW_WIDTH;
+  const maxY = area.top + area.height - panelWindowHeight();
   return {
     x: clampNumber(x, area.left, maxX),
     y: clampNumber(y, area.top, maxY)
   };
 }
 
+// --- 侧边贴边模式的坐标换算 ---
+// 原生窗口左上角与页签左上角存在固定偏移（留白用于绘制阴影），
+// 位置记忆统一使用「页签」坐标，避免留白尺寸变化后旧数据整体漂移。
+function clampSideTabY(y) {
+  const area = WIN.workArea;
+  return clampNumber(y, area.top, area.top + area.height - SIDE_TAB_HEIGHT);
+}
+
+function sideWindowPosFromTabY(tabY) {
+  const area = WIN.workArea;
+  return {
+    x: area.left + area.width - SIDE_WINDOW_WIDTH,
+    y: tabY - SIDE_SHADOW_Y
+  };
+}
+
+function sideTabRectFromWindow(windowRect) {
+  const area = WIN.workArea;
+  return {
+    x: area.left + area.width - SIDE_TAB_WIDTH,
+    y: windowRect.y + SIDE_SHADOW_Y,
+    width: SIDE_TAB_WIDTH,
+    height: SIDE_TAB_HEIGHT
+  };
+}
+
+// 当前悬浮球的可视矩形（底部模式 = 水豚窗口，贴边模式 = 半胶囊页签）
+function bubbleVisualRect() {
+  if (WIN.mode === 'bubble' && WIN.bubbleMode === 'side') {
+    return sideTabRectFromWindow(WIN.current);
+  }
+  return {
+    x: WIN.current.x,
+    y: WIN.current.y,
+    width: WIN.current.width,
+    height: WIN.current.height
+  };
+}
+
 function defaultBubblePosition(mode) {
   const area = WIN.workArea;
   if (mode === 'side') {
-    return {
-      x: area.left + area.width - SIDE_SIZE,
-      y: area.top + Math.round((area.height - SIDE_SIZE) / 2)
-    };
+    return sideWindowPosFromTabY(
+      area.top + Math.round((area.height - SIDE_TAB_HEIGHT) / 2)
+    );
   }
   return {
     x: area.left + Math.round((area.width - BUBBLE_SIZE) / 2),
@@ -152,12 +214,9 @@ function defaultBubblePosition(mode) {
 function clampBubblePosition(mode, pos) {
   const area = WIN.workArea;
   if (mode === 'side') {
-    const fallback = defaultBubblePosition('side');
-    const y = pos && Number.isFinite(pos.y) ? pos.y : fallback.y;
-    return {
-      x: area.left + area.width - SIDE_SIZE,
-      y: clampNumber(y, area.top, area.top + area.height - SIDE_SIZE)
-    };
+    const fallbackTabY = area.top + Math.round((area.height - SIDE_TAB_HEIGHT) / 2);
+    const tabY = pos && Number.isFinite(pos.y) ? pos.y : fallbackTabY;
+    return sideWindowPosFromTabY(clampSideTabY(tabY));
   }
   const fallback = defaultBubblePosition('bottom');
   const x = pos && Number.isFinite(pos.x) ? pos.x : fallback.x;
@@ -169,7 +228,7 @@ function clampBubblePosition(mode, pos) {
 
 function bubbleSize(mode) {
   return mode === 'side'
-    ? { width: SIDE_SIZE, height: SIDE_SIZE }
+    ? { width: SIDE_WINDOW_WIDTH, height: SIDE_WINDOW_HEIGHT }
     : { width: BUBBLE_SIZE, height: BUBBLE_SIZE };
 }
 
@@ -251,17 +310,25 @@ async function showPanel() {
     let target;
     if (restore.panelPos && Number.isFinite(restore.panelPos.x) && Number.isFinite(restore.panelPos.y)) {
       hasUserMovedPanel = true;
-      target = clampPanelPosition(restore.panelPos.x, restore.panelPos.y);
+      // panelPos 记录的是面板本身左上角（与旧版本数据兼容），换算成窗口坐标。
+      target = clampPanelWindowPosition(
+        restore.panelPos.x - PANEL_SHADOW_PADDING,
+        restore.panelPos.y - PANEL_SHADOW_PADDING
+      );
     } else {
       target = alignPanelToBubble();
     }
 
-    // 在窗口尺寸切换前记录悬浮球位置，作为面板展开动画的原点。
+    // 动画原点以面板内容（去掉阴影留白）为基准，悬浮球取可视矩形（贴边模式为页签）。
     const origin = panelOriginTowardsBubble(
-      target.x, target.y, PANEL_WIDTH, WIN.panelHeight, WIN.current
+      target.x + PANEL_SHADOW_PADDING,
+      target.y + PANEL_SHADOW_PADDING,
+      PANEL_WIDTH,
+      WIN.panelHeight,
+      bubbleVisualRect()
     );
 
-    await applyWindowGeometry('panel', PANEL_WIDTH, WIN.panelHeight, target.x, target.y);
+    await applyWindowGeometry('panel', PANEL_WINDOW_WIDTH, panelWindowHeight(), target.x, target.y);
     Store.set({ panelOpen: true });
     if (typeof closeExport === 'function') closeExport();
     if (typeof closeTrash === 'function') closeTrash();
@@ -292,12 +359,18 @@ async function hidePanel() {
     const pos = clampBubblePosition(mode, stored.bubblePos);
 
     // 关闭时朝悬浮球目标位置收缩，收缩完再切回小窗口。
+    // 贴边模式下收起目标是页签矩形（原生窗口左侧/上下还含阴影留白）。
+    const bubbleTarget = mode === 'side'
+      ? sideTabRectFromWindow({ x: pos.x, y: pos.y, width: size.width, height: size.height })
+      : { x: pos.x, y: pos.y, width: size.width, height: size.height };
+
+    // 原点按面板内容计算（窗口坐标需去掉四周阴影留白）。
     const origin = panelOriginTowardsBubble(
-      WIN.current.x,
-      WIN.current.y,
-      WIN.current.width,
-      WIN.current.height,
-      { x: pos.x, y: pos.y, width: size.width, height: size.height }
+      WIN.current.x + PANEL_SHADOW_PADDING,
+      WIN.current.y + PANEL_SHADOW_PADDING,
+      WIN.current.width - PANEL_SHADOW_PADDING * 2,
+      WIN.current.height - PANEL_SHADOW_PADDING * 2,
+      bubbleTarget
     );
 
     await animatePanelClose(origin);
@@ -311,32 +384,34 @@ async function hidePanel() {
   }
 }
 
-// 确保面板位置在当前工作区内
+// 确保面板位置在当前工作区内（坐标为原生窗口左上角）
 function ensurePanelInViewport() {
   WIN.panelHeight = panelHeightForWorkArea();
-  const next = clampPanelPosition(WIN.current.x, WIN.current.y);
+  const next = clampPanelWindowPosition(WIN.current.x, WIN.current.y);
   scheduleWindowMove(next.x, next.y);
 }
 
-// 自动对齐到悬浮球上方/侧边
+// 自动对齐到悬浮球上方/侧边（先按面板内容定位，再换算成窗口坐标）
 function alignPanelToBubble() {
-  const area = WIN.workArea;
   const isSideMode = WIN.bubbleMode === 'side';
   const bubble = WIN.current;
-  let targetLeft;
-  let targetTop;
+  let panelLeft;
+  let panelTop;
 
   if (isSideMode) {
-    targetLeft = bubble.x - PANEL_WIDTH - 12;
-    targetTop = bubble.y + (bubble.height / 2) - (WIN.panelHeight / 2);
+    // 贴边模式的原生窗口比页签宽 20px、高 32px，先取页签矩形再对齐。
+    const tab = sideTabRectFromWindow(bubble);
+    panelLeft = tab.x - PANEL_WIDTH - 12;
+    panelTop = tab.y + (tab.height / 2) - (WIN.panelHeight / 2);
   } else {
-    targetLeft = bubble.x + (bubble.width / 2) - (PANEL_WIDTH / 2);
-    targetTop = bubble.y - WIN.panelHeight - 12;
+    panelLeft = bubble.x + (bubble.width / 2) - (PANEL_WIDTH / 2);
+    panelTop = bubble.y - WIN.panelHeight - 12;
   }
 
-  targetLeft = clampNumber(targetLeft, area.left, area.left + area.width - PANEL_WIDTH);
-  targetTop = clampNumber(targetTop, area.top, area.top + area.height - WIN.panelHeight);
-  return { x: targetLeft, y: targetTop };
+  return clampPanelWindowPosition(
+    panelLeft - PANEL_SHADOW_PADDING,
+    panelTop - PANEL_SHADOW_PADDING
+  );
 }
 
 // --- 面板拖动（直接移动原生窗口） ---
@@ -371,12 +446,12 @@ function onPanelMove(e) {
   const newX = clampNumber(
     panelDragState.startX + dx,
     area.left,
-    area.left + area.width - PANEL_WIDTH
+    area.left + area.width - PANEL_WINDOW_WIDTH
   );
   const newY = clampNumber(
     panelDragState.startY + dy,
     area.top,
-    area.top + area.height - WIN.panelHeight
+    area.top + area.height - panelWindowHeight()
   );
   scheduleWindowMove(newX, newY);
 }
@@ -391,7 +466,13 @@ async function onPanelUp() {
   if (moved) {
     hasUserMovedPanel = true;
     await refreshMetrics();
-    Store.set({ panelPos: { x: WIN.current.x, y: WIN.current.y } });
+    // panelPos 仍按面板内容左上角存储，兼容旧版本数据。
+    Store.set({
+      panelPos: {
+        x: WIN.current.x + PANEL_SHADOW_PADDING,
+        y: WIN.current.y + PANEL_SHADOW_PADDING
+      }
+    });
   }
 }
 

@@ -156,8 +156,8 @@ bubbleImg.style.height = 'auto';
 bubbleImg.style.pointerEvents = 'none';
 bubbleImg.style.display = 'inline-block';
 bubbleImg.style.objectFit = 'contain';
-// 增加精准的 PNG 轮廓投影发光滤镜
-bubbleImg.style.filter = 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15))';
+// 增加精准的 PNG 轮廓投影发光滤镜（半硬边：2px 微模糊）
+bubbleImg.style.filter = 'drop-shadow(0 2px 2px rgba(0, 0, 0, 0.15))';
 
 const bubbleSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 bubbleSvg.id = 'bubble-icon-svg';
@@ -172,7 +172,7 @@ bubbleSvg.setAttribute('stroke-linejoin', 'round');
 bubbleSvg.style.display = 'none';
 bubbleSvg.style.pointerEvents = 'none';
 bubbleSvg.style.margin = 'auto';
-bubbleSvg.style.filter = 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15))';
+bubbleSvg.style.filter = 'drop-shadow(0 2px 2px rgba(0, 0, 0, 0.15))';
 bubbleSvg.innerHTML = `
   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
   <polyline points="14 2 14 8 20 8"></polyline>
