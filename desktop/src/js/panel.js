@@ -12,7 +12,9 @@ const BUBBLE_SIZE = 64;
 // 侧边贴边模式（方案 A）：可视页签 36×30 贴在屏幕右边缘；
 // 原生窗口额外留出「居中光晕」阴影所需的绘制空间：左侧 6px、上下各 2px → 窗口 42×34。
 // 需要满足：SIDE_SHADOW_LEFT ≥ |offsetX| + blur + hover 位移 = 0 + 2 + 4 = 6；SIDE_SHADOW_Y ≥ blur = 2。
-// （数值与 styles.js 中 .side-dock 的 box-shadow / top 保持一致）
+// hover 时页签左移 4px（styles.js 的 translateX(-4px)），为让右缘始终贴住屏幕边缘，
+// CSS 中页签盒宽做成 40px 且 right:-4px —— 多出的 4px 溢出窗口被裁掉，可见宽度仍是 36px。
+// （数值与 styles.js 中 .side-dock 的 box-shadow / top / width / right 保持一致）
 const SIDE_TAB_WIDTH = 36;
 const SIDE_TAB_HEIGHT = 30;
 const SIDE_SHADOW_LEFT = 6;

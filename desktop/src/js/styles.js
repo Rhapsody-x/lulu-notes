@@ -609,6 +609,9 @@ const APP_STYLES = `
     height: 100%;
     /* 方案A：原生窗口四周的阴影留白（= 阴影最大外扩 2px），需与 panel.js 的 PANEL_SHADOW_PADDING 一致 */
     --panel-edge: 2px;
+    /* 贴边页签「不透明度」= 1 - 透明度：静止时 30% 透明度（0.7），鼠标移入 0% 透明度（完全实心），移出自动淡回 */
+    --tab-idle-opacity: 0.7;
+    --tab-hover-opacity: 1;
   }
 
   /* --- 面板模式：面板内缩一圈，把窗口边界让给 box-shadow 绘制 --- */
@@ -662,13 +665,16 @@ const APP_STYLES = `
   :host-context(body.bubble-mode) #toggle-bubble.side-dock {
     position: fixed;
     left: auto !important;
-    right: 0 !important;
+    /* 右缘故意溢出窗口 4px（窗口右边缘 = 屏幕右边缘，溢出部分被裁掉不可见）：
+       这样 hover 左移 4px 后右缘正好回到屏幕边缘，不会与屏幕脱开 */
+    right: -4px !important;
     top: 2px !important; /* = panel.js 的 SIDE_SHADOW_Y */
     bottom: auto !important;
-    width: 36px !important;
+    width: 40px !important; /* 40 = 可见 36px + 右侧 4px 溢出（给 hover 位移留量） */
     height: 30px !important;
     margin: 0 !important;
-    padding: 0 0 0 5px !important;
+    /* 右侧 4px padding 抵消上面溢出的 4px 宽度，使箭头视觉位置与原来完全一致 */
+    padding: 0 4px 0 5px !important;
     border-radius: 100px 0 0 100px !important;
     background: #a0cfff !important;
     /* 居中光晕：无偏移 + 2px 微模糊（hover 再左移 4px ⇒ 共需 6px，正好等于 6px 留白） */
@@ -677,10 +683,15 @@ const APP_STYLES = `
     align-items: center !important;
     justify-content: center !important;
     transform: none;
+    /* 静止 30% 透明（不透明度 0.7）；鼠标移入变实心，移出自动淡回（见下方 :hover） */
+    opacity: var(--tab-idle-opacity);
+    /* 覆盖基础规则的过渡：透明度 0.25s，位移/底色沿用原有缓动 */
+    transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.65, 0, 0.35, 1), background 0.25s ease;
   }
   :host-context(body.bubble-mode) #toggle-bubble.side-dock:hover {
     transform: translateX(-4px) !important;
     background: #8ec2f5 !important;
+    opacity: var(--tab-hover-opacity);
   }
   :host-context(body.bubble-mode) #toggle-bubble.side-dock #bubble-icon-img,
   :host-context(body.bubble-mode) #toggle-bubble.side-dock #bubble-icon-svg {
