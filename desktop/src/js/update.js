@@ -22,9 +22,6 @@ const AUTO_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 let updateBusy = false;
 let updateModal = null;
 let progressBox = null;
-/// 面板收起时下载完成的提示，等用户下次打开面板再弹。
-let deferredPending = null;
-let resizeTimer = 0;
 
 // ---------------- 基础工具 ----------------
 
@@ -42,6 +39,14 @@ function isSkipped(version) {
 /// 用宽度判断可以避免依赖面板内部的 class 状态。
 function panelVisible() {
   return window.innerWidth >= 200;
+}
+
+/// 有新版本下载完成、但用户还没查看时，在菜单按钮和「检查更新」项上挂红点。
+function setUpdateBadge(visible) {
+  const menuBtn = shadow.getElementById('menu-btn');
+  const updateItem = shadow.getElementById('check-update');
+  if (menuBtn) menuBtn.classList.toggle('has-update', visible);
+  if (updateItem) updateItem.classList.toggle('has-update', visible);
 }
 
 async function onUpdateEvent(name, handler) {
@@ -107,6 +112,8 @@ function closeUpdateDialog() {
     updateModal.parentNode.removeChild(updateModal);
   }
   updateModal = null;
+  // 弹窗被关掉说明用户已经看过并做了选择，红点可以撤了。
+  setUpdateBadge(false);
 }
 
 function buildUpdateDialog(config) {
@@ -162,17 +169,16 @@ function buildUpdateDialog(config) {
 function showReadyDialog(pending, fromStartup) {
   if (!pending) return;
 
-  // 面板收着的时候不硬弹，等下次打开面板再提示。
+  // 面板收着的时候不弹窗打扰，只在菜单按钮上挂一个红点，
+  // 用户打开面板点「检查更新」时再展示。
   if (!panelVisible()) {
-    deferredPending = pending;
+    setUpdateBadge(true);
     return;
   }
 
   // 下载完成的命令返回值和 update-downloaded 事件都会走到这里，
   // 同一个版本只弹一次，避免弹窗被重复重建。
   if (updateModal && updateModal.dataset.version === String(pending.version)) return;
-
-  deferredPending = null;
 
   buildUpdateDialog({
     title: `新版本 v${pending.version} 已下载`,
@@ -233,6 +239,7 @@ function showFailureDialog(error) {
 async function skipVersion(version) {
   Store.set({ [SKIPPED_VERSION_KEY]: version });
   closeUpdateDialog();
+  setUpdateBadge(false);
   try {
     await safeInvoke('discard_pending_update');
   } catch (err) {
@@ -244,6 +251,7 @@ async function skipVersion(version) {
 async function installNow() {
   closeUpdateDialog();
   hideProgress();
+  setUpdateBadge(false);
 
   // 安装会强制退出进程，先把当前编辑内容落盘。
   try {
@@ -362,7 +370,8 @@ async function bootUpdate() {
       if (isSkipped(pending.version)) {
         await safeInvoke('discard_pending_update');
       } else {
-        showReadyDialog(pending, true);
+        // 启动时不弹窗，只挂红点；用户点「检查更新」时再决定装不装。
+        setUpdateBadge(true);
         return;
       }
     }
@@ -415,18 +424,6 @@ if (versionLabel && Tauri.app && typeof Tauri.app.getVersion === 'function') {
     })
     .catch(() => {});
 }
-
-// 面板从悬浮球展开后，补弹之前被推迟的提示
-window.addEventListener('resize', () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    if (deferredPending && panelVisible()) {
-      const pending = deferredPending;
-      deferredPending = null;
-      showReadyDialog(pending, true);
-    }
-  }, 320);
-});
 
 window.addEventListener('load', () => {
   setTimeout(bootUpdate, UPDATE_AUTO_DELAY_MS);

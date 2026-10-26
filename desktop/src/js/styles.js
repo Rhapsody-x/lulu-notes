@@ -175,6 +175,7 @@ const APP_STYLES = `
   #menu-btn {
     background: transparent; border: none; cursor: pointer; color: #1565C0; width: 32px; height: 32px;
     display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s;
+    position: relative;
   }
   #menu-btn:hover { background: rgba(0,0,0,0.05); color: #0D47A1; }
   
@@ -204,6 +205,24 @@ const APP_STYLES = `
   .dropdown-item:hover { background: #E3F2FD; color: #0D47A1; }
   .dropdown-item svg { width: 14px; height: 14px; color: #90CAF9; }
 
+  /* 有新版本待安装时的红点：菜单按钮右上角 + 「检查更新」项右侧 */
+  #menu-btn.has-update::after {
+    content: '';
+    position: absolute; top: 3px; right: 3px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #E53935;
+    box-shadow: 0 0 0 2px #ffffff;
+    pointer-events: none;
+  }
+  .dropdown-item.has-update::after {
+    content: '';
+    flex: 0 0 auto;
+    margin-left: auto;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #E53935;
+  }
+  .dropdown-item.has-update:hover::after { background: #C62828; }
+  
   /* --- 列表区域与隐藏式滚动条设计 --- */
   #notes-container { 
     flex: 1; 
