@@ -4,14 +4,18 @@
 //        有新版本时弹窗告知，用户可"去下载 / 稍后 / 跳过此版本"。
 //  说明：这一阶段不下载安装包，也不替换程序，只做提示与跳转，
 //        因此不需要签名密钥；后续升级到自动更新时再补签名。
-//  ⚠️ 使用前必须把 UPDATE_REPO 改成实际仓库（形如 "用户名/仓库名"）。
+//  ⚠️ 更新源仓库（公开仓库才能被未认证请求读取）
 // ================================================================
-const UPDATE_REPO = '';
+const UPDATE_REPO = 'Rhapsody-x/lulu-notes';
 
 const UPDATE_API_BASE = 'https://api.github.com/repos';
 const UPDATE_TIMEOUT_MS = 8000;
 const UPDATE_AUTO_DELAY_MS = 8000;
+/// 自动检查最多每天一次：GitHub 未认证接口按 IP 限流（60 次/小时），
+/// 同一出口 IP 的多个使用者频繁重启容易撞上限。
+const AUTO_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const SKIPPED_VERSION_KEY = 'skippedUpdateVersion';
+const LAST_AUTO_CHECK_KEY = 'lastAutoUpdateCheckAt';
 
 let updateChecking = false;
 let updateModal = null;
@@ -137,15 +141,14 @@ function showUpdateDialog(latest, current) {
   shadow.appendChild(overlay);
   updateModal = overlay;
 
-  // 两个"不更新"的选项都记住版本号，下次启动不再打扰；
-  // 区别只是文案，行为一致。
-  const remember = () => {
+  // 两个"不更新"的选项语义不同：
+  //   跳过此版本 → 记住版本号，以后不再提示它
+  //   稍后      → 只是本次关闭，下次启动仍会提示
+  skipBtn.addEventListener('click', () => {
     Store.set({ [SKIPPED_VERSION_KEY]: latest.version });
     closeUpdateDialog();
-  };
-
-  skipBtn.addEventListener('click', remember);
-  laterBtn.addEventListener('click', remember);
+  });
+  laterBtn.addEventListener('click', closeUpdateDialog);
 
   goBtn.addEventListener('click', () => {
     if (!latest.url) {
@@ -176,12 +179,20 @@ async function checkForUpdate(options = {}) {
     return;
   }
 
+  // 自动检查做节流；手动检查不受限制，并会顺带刷新时间戳
+  if (silent) {
+    const last = Number(Store.get([LAST_AUTO_CHECK_KEY])[LAST_AUTO_CHECK_KEY]) || 0;
+    if (Date.now() - last < AUTO_CHECK_INTERVAL_MS) return;
+  }
+
   updateChecking = true;
   if (!silent) showToast('正在检查更新…');
 
   try {
     const current = await currentAppVersion();
     const latest = await fetchLatestRelease();
+    // 只在拿到响应后记录，失败时不记录，下次启动还能重试
+    Store.set({ [LAST_AUTO_CHECK_KEY]: Date.now() });
 
     if (compareVersions(latest.version, current) > 0) {
       const skipped = Store.get([SKIPPED_VERSION_KEY])[SKIPPED_VERSION_KEY];
