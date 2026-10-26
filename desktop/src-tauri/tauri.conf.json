@@ -67,6 +67,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIxQjI3Qzk5QTZBNTc5MjQKUldRa2VhV21tWHl5SWJPUHU4UlhMMDNCSHNQVms1UjFORnZqVDdtQWF4ZlI5Yk0wNm1iRDJERHEK",
       "endpoints": [
+        "https://gh-proxy.com/https://github.com/Rhapsody-x/lulu-notes/releases/latest/download/latest-cn.json",
         "https://github.com/Rhapsody-x/lulu-notes/releases/latest/download/latest.json"
       ],
       "requireSignedVersion": true,

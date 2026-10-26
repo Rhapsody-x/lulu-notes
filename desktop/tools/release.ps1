@@ -19,7 +19,10 @@
 param(
   [string]$Notes = "",
   [switch]$SkipBuild,
-  [string]$Repo = "Rhapsody-x/lulu-notes"
+  [string]$Repo = "Rhapsody-x/lulu-notes",
+  # Prefix of the mirror used for users without a proxy. Must be reachable
+  # from mainland China and must accept "https://github.com/..." as a suffix.
+  [string]$MirrorPrefix = "https://gh-proxy.com/"
 )
 
 $ErrorActionPreference = "Stop"
@@ -89,28 +92,42 @@ Copy-Item $sigPath (Join-Path $dist "$assetName.sig") -Force
 $signature = (Get-Content $sigPath -Raw).Trim()
 $url = "https://github.com/$Repo/releases/download/v$version/$assetName"
 
-$manifest = [ordered]@{
-  version   = $version
-  notes     = $Notes
-  pub_date  = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-  platforms = [ordered]@{
-    "windows-x86_64" = [ordered]@{
-      signature = $signature
-      url       = $url
+# github.com is unreachable from mainland China without a proxy, so the app
+# ships two manifests with identical content but different download URLs:
+#   latest-cn.json -> mirror URL (no proxy needed)
+#   latest.json    -> official GitHub URL (used as the fallback endpoint)
+$urlMirror = "$MirrorPrefix$url"
+$pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+function New-Manifest([string]$downloadUrl) {
+  [ordered]@{
+    version   = $version
+    notes     = $Notes
+    pub_date  = $pubDate
+    platforms = [ordered]@{
+      "windows-x86_64" = [ordered]@{
+        signature = $signature
+        url       = $downloadUrl
+      }
     }
   }
 }
 
-$json = $manifest | ConvertTo-Json -Depth 6
-$jsonPath = Join-Path $dist "latest.json"
 # UTF-8 without BOM: a BOM would break the updater's JSON parser.
-[System.IO.File]::WriteAllText($jsonPath, $json, (New-Object System.Text.UTF8Encoding($false)))
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+$json = New-Manifest $url | ConvertTo-Json -Depth 6
+$jsonCn = New-Manifest $urlMirror | ConvertTo-Json -Depth 6
+[System.IO.File]::WriteAllText((Join-Path $dist "latest.json"), $json, $utf8NoBom)
+[System.IO.File]::WriteAllText((Join-Path $dist "latest-cn.json"), $jsonCn, $utf8NoBom)
 
 Write-Host ""
 Write-Host "Release assets ready in: $dist"
 Get-ChildItem $dist | Select-Object Name, @{ n = "KB"; e = { [math]::Round($_.Length / 1KB, 1) } } | Format-Table -AutoSize
 
-Write-Host "Next steps:"
-Write-Host "  1. git commit + push the version bump"
-Write-Host "  2. gh release create v$version `"$dist\latest.json`" `"$dist\$assetName`" --title `"v$version`" --notes `"...`""
-Write-Host "  3. Verify: https://github.com/$Repo/releases/latest/download/latest.json"
+Write-Host "Upload these to the GitHub release tagged v$version :"
+Write-Host "  latest.json"
+Write-Host "  latest-cn.json"
+Write-Host "  $assetName"
+Write-Host ""
+Write-Host "Verify (no proxy needed):"
+Write-Host "  ${MirrorPrefix}https://github.com/$Repo/releases/latest/download/latest-cn.json"
