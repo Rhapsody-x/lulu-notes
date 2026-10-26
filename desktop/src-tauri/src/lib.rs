@@ -2,6 +2,13 @@ mod dialogs;
 mod images;
 mod viewer;
 
+#[cfg(windows)]
+use windows::core::PCWSTR;
+#[cfg(windows)]
+use windows::Win32::UI::Shell::ShellExecuteW;
+#[cfg(windows)]
+use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
 use serde::Serialize;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -129,6 +136,53 @@ fn quit_app(app: AppHandle) {
     app.exit(0);
 }
 
+/// 用系统默认浏览器打开链接。
+/// 只放行 http/https，避免这个命令被当成任意程序启动器使用。
+#[cfg(windows)]
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    use std::os::windows::ffi::OsStrExt;
+
+    let target = url.trim();
+    let lower = target.to_ascii_lowercase();
+    if !(lower.starts_with("https://") || lower.starts_with("http://")) {
+        return Err("只允许打开 http/https 链接".into());
+    }
+
+    let to_wide = |value: &str| -> Vec<u16> {
+        std::ffi::OsStr::new(value)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect()
+    };
+
+    let operation = to_wide("open");
+    let file = to_wide(target);
+
+    let result = unsafe {
+        ShellExecuteW(
+            None,
+            PCWSTR(operation.as_ptr()),
+            PCWSTR(file.as_ptr()),
+            PCWSTR::null(),
+            PCWSTR::null(),
+            SW_SHOWNORMAL,
+        )
+    };
+
+    // ShellExecuteW 返回值 > 32 才表示成功。
+    if result.0 as isize <= 32 {
+        return Err("打开浏览器失败".into());
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+#[tauri::command]
+fn open_external_url(_url: String) -> Result<(), String> {
+    Err("当前平台暂不支持打开外部链接".into())
+}
+
 fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
     let show_item = MenuItem::with_id(app, "show-panel", "打开便签", true, None::<&str>)?;
     let new_item = MenuItem::with_id(app, "new-note", "新建便签", true, None::<&str>)?;
@@ -179,6 +233,7 @@ pub fn run() {
             show_window,
             hide_window,
             quit_app,
+            open_external_url,
             dialogs::save_export_file,
             dialogs::pick_import_file,
             images::images_base_dir,

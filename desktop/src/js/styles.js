@@ -742,4 +742,93 @@ const APP_STYLES = `
     opacity: 1;
     transform: translate(-50%, 0);
   }
+
+  /* --- 更新提示弹窗 --- */
+  .update-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(13, 26, 45, 0.32);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 2147482000;
+    animation: updateFadeIn 0.18s ease;
+  }
+  @keyframes updateFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .update-card {
+    width: 100%;
+    max-width: 300px;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 18px 18px 14px;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 18px 48px -12px rgba(13, 26, 45, 0.45);
+    animation: updatePopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes updatePopIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+
+  .update-title {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #0D47A1;
+  }
+  .update-subtitle {
+    font-size: 11px;
+    color: rgba(21, 101, 192, 0.7);
+    margin-bottom: 10px;
+  }
+  .update-notes {
+    flex: 1 1 auto;
+    min-height: 48px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #F5F9FD;
+    color: #1A237E;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    user-select: text;
+  }
+  .update-notes::-webkit-scrollbar { width: 6px; }
+  .update-notes::-webkit-scrollbar-thumb {
+    background: rgba(25, 118, 210, 0.28);
+    border-radius: 3px;
+  }
+  .update-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .update-btn {
+    padding: 7px 14px;
+    border-radius: 9px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.16s ease;
+  }
+  .update-btn.ghost {
+    border: 1px solid rgba(21, 101, 192, 0.2);
+    background: transparent;
+    color: #1565C0;
+  }
+  .update-btn.ghost:hover { background: rgba(21, 101, 192, 0.07); }
+  .update-btn.primary {
+    border: none;
+    background: #1976D2;
+    color: #ffffff;
+    font-weight: 600;
+  }
+  .update-btn.primary:hover { background: #1565C0; }
 `;
