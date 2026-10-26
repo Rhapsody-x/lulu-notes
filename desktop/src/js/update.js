@@ -11,12 +11,12 @@
 //   * 「稍后」保留已下载的安装包，下次启动仍会提示安装。
 //   * 托盘菜单「检查更新」可手动触发，会显示下载进度。
 // ================================================================
-const UPDATE_PAGE = 'https://github.com/Rhapsody-x/lulu-notes/releases/latest';
+const UPDATE_PAGE = 'https://gitee.com/xu0523/lulu-notes/releases';
 const UPDATE_AUTO_DELAY_MS = 6000;
 const SKIPPED_VERSION_KEY = 'skippedUpdateVersion';
 const LAST_AUTO_CHECK_KEY = 'lastAutoUpdateCheckAt';
-/// 自动检查每天最多一次：GitHub 的 Release 资源虽不限流，
-/// 但没必要每次启动都打一次网络请求。
+/// 自动检查每天最多一次：更新清单是一份静态 JSON，
+/// 没必要每次启动都打一次网络请求。
 const AUTO_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 let updateBusy = false;

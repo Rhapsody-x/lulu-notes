@@ -1,11 +1,11 @@
 {
-    "version":  "2.5.0",
-    "notes":  "改为 Gitee 更新源，无代理也能检查更新",
-    "pub_date":  "2026-10-26T07:25:58Z",
+    "version":  "2.5.1",
+    "notes":  "更新失败时「打开发布页」改为 Gitee 发行版页面",
+    "pub_date":  "2026-10-26T07:42:53Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRa2VhV21tWHl5SVRZSGc5YU4ydWRVWHA3alRLQ3VQeDR0blcybm5iQ0k5a2dYbzV1d0tzdHBBU3NpWCtOWXg2TEVPUTgrcGsxV0lMS2k4TGlNenFoNFV4WnBRZHVkVUF3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkyOTk5NTU4CWZpbGU65Zmc5Zmc5L6/562+XzIuNS4wX3g2NC1zZXR1cC5leGUJdmVyc2lvbjoyLjUuMAoyZm51ZzdYTXhGWjVEUWNBWDMrOWNZNERWeDQ0cTluQzU0SGt3dGFmdjNPVlhxL2MwTDUzUzgxMkt3VU1SelZENkhxdjJoWEdmV0hVT3JJY2Y2K0pBZz09Cg==",
-                                             "url":  "https://gitee.com/xu0523/lulu-notes/releases/download/v2.5.0/lulu-notes_2.5.0_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRa2VhV21tWHl5SVgzMFZ6QUJ3UjhKZXhxTEk3aEZZWkFMZDNkNVQwR0hWd2N2cWF2MTVSSEgzZlcwb2NYUkVRb0JCZkFuODd3eng0dVZQWFlZTTNEUWJ5QnhpMWRjSEE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMDAwNTcwCWZpbGU65Zmc5Zmc5L6/562+XzIuNS4xX3g2NC1zZXR1cC5leGUJdmVyc2lvbjoyLjUuMQo1ZUwzMXo5WDhBVXJza2FIZWJkTkpqcmNQM2xHYWo2VWcwS1p5dnd1RE4xMVA3Um9Kemc2d2JKUnh6V1pTL2gwNlZQT0JBY3lGeVhHbXcxZW9sUXlBdz09Cg==",
+                                             "url":  "https://gitee.com/xu0523/lulu-notes/releases/download/v2.5.1/lulu-notes_2.5.1_x64-setup.exe"
                                          }
                   }
 }
