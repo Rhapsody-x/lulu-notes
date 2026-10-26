@@ -57,6 +57,64 @@ function getDragAfterElement(container, y) {
   }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
+// 点击便签中的图片 → 打开独立预览窗口放大查看
+notesContainer.addEventListener('click', (e) => {
+  const target = e.target;
+  const img = target && target.closest ? target.closest('img[data-image]') : null;
+  if (!img) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const name = img.getAttribute('data-image');
+  if (!name) return;
+  invoke('open_image_viewer', {
+    name,
+    width: img.naturalWidth || 0,
+    height: img.naturalHeight || 0
+  }).catch(err => showToast(`无法打开预览：${err}`));
+});
+
+// --- 图片：渲染水合 / 存储序列化 / 点击放大 ---
+// 便签 HTML 中只保存 data-image="images/xxx.png"，src 在渲染时现算，
+// 这样备份文件不含机器相关的绝对路径，也不会把 base64 写回 localStorage。
+function hydrateNoteImages(root) {
+  root.querySelectorAll('img[data-image]').forEach(img => {
+    const name = img.getAttribute('data-image');
+    if (!name) return;
+    img.classList.add('note-image');
+    img.setAttribute('draggable', 'false');
+    img.title = '点击放大查看';
+
+    // 资源协议不可用（或目录未知）时退回 base64 读取，保证图片一定可见。
+    const useFallback = () => {
+      if (img.dataset.fallback === '1') return;
+      img.dataset.fallback = '1';
+      invoke('read_images', { names: [name] })
+        .then(map => {
+          if (map && map[name]) img.src = map[name];
+        })
+        .catch(() => {});
+    };
+
+    const src = img.getAttribute('src') || imageSrc(name);
+    if (src) img.setAttribute('src', src);
+    else useFallback();
+
+    img.addEventListener('error', useFallback);
+  });
+}
+
+function serializeNoteContent(editArea) {
+  const clone = editArea.cloneNode(true);
+  clone.querySelectorAll('img[data-image]').forEach(img => {
+    img.removeAttribute('src');
+    img.removeAttribute('class');
+    img.removeAttribute('draggable');
+    img.removeAttribute('title');
+    img.removeAttribute('data-fallback');
+  });
+  return clone.innerHTML;
+}
+
 // --- 核心业务 ---
 function loadNotes() {
   const result = Store.get(['notes']);
@@ -128,6 +186,7 @@ function createNoteElement(id, content, timestamp, isNew = false, shouldCollapse
   textarea.setAttribute('contenteditable', 'true');
   textarea.setAttribute('placeholder', '记点什么...');
   textarea.innerHTML = content;
+  hydrateNoteImages(textarea);
 
   // 右上角操作
   const actionsDiv = document.createElement('div');
@@ -198,12 +257,23 @@ function createNoteElement(id, content, timestamp, isNew = false, shouldCollapse
     delBtn.className = 'icon-btn delete-btn';
     delBtn.innerHTML = ICONS.trash;
     delBtn.addEventListener('click', () => {
+      if (noteDiv.dataset.removing === '1') return;
+      noteDiv.dataset.removing = '1';
       noteDiv.classList.add('anim-leave');
-      noteDiv.addEventListener('animationend', () => {
+
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
         moveToTrash(id);
         noteDiv.remove();
         saveNotes();
-      }, { once: true });
+      };
+
+      noteDiv.addEventListener('animationend', finish, { once: true });
+      // 兜底：系统开启"减少动态效果"或动画被中断时 animationend 不触发，
+      // 没有这条兜底便签会删不掉。
+      setTimeout(finish, 420);
     });
 
   btnGroup.appendChild(copyBtn);
@@ -255,12 +325,11 @@ function saveNotes() {
     const editArea = card.querySelector('.note-textarea');
     notes.push({
       id: parseInt(card.dataset.id),
-      content: editArea ? editArea.innerHTML : "",
+      content: editArea ? serializeNoteContent(editArea) : "",
       timestamp: card.dataset.timestamp,
       isPinned: card.dataset.pinned === 'true'
     });
   });
-  isLocalChange = true;
   Store.set({ notes: notes });
 }
 

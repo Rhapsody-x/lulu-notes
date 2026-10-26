@@ -20,11 +20,32 @@ async function handleTrayNewNote() {
   }, 220);
 }
 
+// 兜底回收：磁盘上存在、但没有任何便签（含回收站）引用的图片一律删除。
+// 覆盖"用户在编辑器里手动删掉图片""异常退出"等无法精确追踪的场景。
+async function gcOrphanImages() {
+  try {
+    const data = Store.get(['notes', 'deletedNotes']);
+    // 安全护栏：存储读取异常时 notes 不是数组，此时 keep 会为空，
+    // 若照常回收会把磁盘上的图片全部删掉，因此直接跳过。
+    if (!Array.isArray(data.notes) && !Array.isArray(data.deletedNotes)) return;
+
+    const keep = collectImageNames([
+      ...(Array.isArray(data.notes) ? data.notes : []),
+      ...(Array.isArray(data.deletedNotes) ? data.deletedNotes : [])
+    ]);
+    await invoke('gc_images', { keep });
+  } catch (err) {
+    console.error('回收孤儿图片失败:', err);
+  }
+}
+
 async function bootDesktopApp() {
   try {
     await windowReady;
+    await initImageBase();
     loadNotes();
     cleanupExpiredNotes();
+    await gcOrphanImages();
 
     const eventApi = Tauri.event;
     if (eventApi && typeof eventApi.listen === 'function') {

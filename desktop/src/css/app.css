@@ -21,8 +21,3 @@ textarea,
 [contenteditable="true"] {
   user-select: text;
 }
-
-/* 拖动窗口时避免选中文字/出现原生拖拽残影 */
-body.dragging {
-  cursor: default;
-}

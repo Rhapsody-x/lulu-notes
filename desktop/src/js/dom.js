@@ -1,7 +1,7 @@
 // ================================================================
 //  dom.js - Shadow DOM 构建层（依赖前置文件：styles.js）
-//  负责：宿主节点、isLocalChange 全局标记、样式注入、HTML 骨架、
-//       全部 DOM 元素引用、悬浮球 PNG/SVG 图标（含降级）创建挂载。
+//  负责：宿主节点、样式注入、HTML 骨架、全部 DOM 元素引用、
+//       悬浮球 PNG/SVG 图标（含降级）创建挂载。
 // ================================================================
 const host = document.createElement('div');
 host.id = 'floating-notes-extension-root';
@@ -13,9 +13,6 @@ host.style.width = '100%';
 host.style.height = '100%';
 document.body.appendChild(host);
 const shadow = host.attachShadow({ mode: 'open' });
-
-// 全局状态：标记本地修改，避免 storage 监听重复渲染
-let isLocalChange = false;
 
 // 样式注入：完整样式表见 styles.js
 const style = document.createElement('style');

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图片预览</title>
+  <link rel="stylesheet" href="css/viewer.css">
+</head>
+<body>
+  <!-- 独立预览窗口：无边框、置顶，按图片原始尺寸显示 -->
+  <div id="stage">
+    <img id="view-image" alt="便签图片" draggable="false">
+    <button id="btn-close" title="关闭 (Esc)">×</button>
+  </div>
+  <div id="hint">双击切换原始尺寸 · 拖拽移动 · Esc 关闭</div>
+  <script src="js/viewer.js"></script>
+</body>
+</html>

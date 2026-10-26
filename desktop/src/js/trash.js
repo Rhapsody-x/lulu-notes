@@ -5,6 +5,27 @@
 // ================================================================
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
+// --- 图片文件的生命周期 ---
+// 便签被彻底删除（手动删除 / 清空回收站 / 7 天过期）时，一并删掉它引用的图片文件，
+// 否则磁盘上会不断堆积无人引用的孤儿文件。
+function collectImageNames(notes) {
+  const names = [];
+  (notes || []).forEach(note => {
+    imageNamesFromHtml(note && note.content).forEach(name => {
+      if (names.indexOf(name) === -1) names.push(name);
+    });
+  });
+  return names;
+}
+
+function purgeImagesOf(notes) {
+  const names = collectImageNames(notes);
+  if (!names.length) return;
+  invoke('delete_images', { names }).catch(err => {
+    console.error('删除图片文件失败:', err);
+  });
+}
+
 function openTrash() {
   cleanupExpiredNotes();
   renderTrash();
@@ -20,7 +41,9 @@ trashZone.addEventListener('click', openTrash);
 closeTrashBtn.addEventListener('click', closeTrash);
 
 clearTrashBtn.addEventListener('click', () => {
-  isLocalChange = true;
+  const current = Store.get(['deletedNotes']);
+  const removed = Array.isArray(current.deletedNotes) ? current.deletedNotes : [];
+  purgeImagesOf(removed);
   Store.set({ deletedNotes: [] });
   renderTrash();
 });
@@ -70,7 +93,6 @@ function moveToTrash(id) {
   if (target) {
     target.deletedAt = Date.now();
     deleted.push(target);
-    isLocalChange = true;
     Store.set({ deletedNotes: deleted });
   }
 }
@@ -83,24 +105,51 @@ function renderTrash() {
   const list = Array.isArray(data.deletedNotes) ? data.deletedNotes.slice() : [];
   trashList.innerHTML = list.length ? '' : '<div class="empty-tip">回收站是空的</div>';
 
-  list.sort((a, b) => b.deletedAt - a.deletedAt).forEach(n => {
+  list.sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0)).forEach(n => {
     const el = document.createElement('div');
     el.className = 'trash-item';
-    const elapsedDays = Math.floor((Date.now() - n.deletedAt) / 86400000);
-    const days = 7 - elapsedDays;
 
-    el.innerHTML = `
-      <div class="trash-content">${n.content || '无内容'}</div>
-      <div class="trash-meta">
-        <span>剩余${days > 0 ? days : 0}天</span>
-        <div style="display: flex; gap: 6px;">
-          <button class="mini-btn btn-restore" title="还原">${TRASH_RESTORE_ICON}</button>
-          <button class="mini-btn btn-delete" title="彻底删除">${TRASH_DELETE_ICON}</button>
-        </div>
-      </div>
-    `;
+    // 缺失 deletedAt 的历史数据按"刚删除"处理，避免出现"剩余 NaN 天"
+    const deletedAt = Number.isFinite(n.deletedAt) ? n.deletedAt : Date.now();
+    const elapsedDays = Math.floor((Date.now() - deletedAt) / 86400000);
+    const days = Math.max(0, 7 - elapsedDays);
 
-    el.querySelector('.btn-restore').addEventListener('click', () => {
+    // 预览统一取纯文本：避免把便签里的 HTML 结构（含导入备份中的未知标签）
+    // 直接注入到回收站列表中。
+    const preview = document.createElement('div');
+    preview.className = 'trash-content';
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = n.content || '';
+    preview.textContent = tempDiv.innerText || tempDiv.textContent || '无内容';
+
+    const meta = document.createElement('div');
+    meta.className = 'trash-meta';
+
+    const remain = document.createElement('span');
+    remain.textContent = `剩余${days}天`;
+
+    const btnGroup = document.createElement('div');
+    btnGroup.style.display = 'flex';
+    btnGroup.style.gap = '6px';
+
+    const restoreBtn = document.createElement('button');
+    restoreBtn.className = 'mini-btn btn-restore';
+    restoreBtn.title = '还原';
+    restoreBtn.innerHTML = TRASH_RESTORE_ICON;
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'mini-btn btn-delete';
+    deleteBtn.title = '彻底删除';
+    deleteBtn.innerHTML = TRASH_DELETE_ICON;
+
+    btnGroup.appendChild(restoreBtn);
+    btnGroup.appendChild(deleteBtn);
+    meta.appendChild(remain);
+    meta.appendChild(btnGroup);
+    el.appendChild(preview);
+    el.appendChild(meta);
+
+    restoreBtn.addEventListener('click', () => {
       saveNotes(); // 先保存当前编辑，再恢复，避免覆盖未落盘内容
       const current = Store.get(['notes', 'deletedNotes']);
       const mainNotes = Array.isArray(current.notes) ? current.notes : [];
@@ -110,7 +159,6 @@ function renderTrash() {
       if (!mainNotes.some(item => item.id === restored.id)) {
         mainNotes.push(restored);
       }
-      isLocalChange = true;
       Store.set({
         notes: mainNotes,
         deletedNotes: deletedNotes.filter(item => item.id !== n.id)
@@ -119,10 +167,10 @@ function renderTrash() {
       loadNotes();
     });
 
-    el.querySelector('.btn-delete').addEventListener('click', () => {
+    deleteBtn.addEventListener('click', () => {
       const current = Store.get(['deletedNotes']);
       const deletedNotes = Array.isArray(current.deletedNotes) ? current.deletedNotes : [];
-      isLocalChange = true;
+      purgeImagesOf([n]);
       Store.set({ deletedNotes: deletedNotes.filter(item => item.id !== n.id) });
       renderTrash();
     });
@@ -135,9 +183,11 @@ function cleanupExpiredNotes() {
   const data = Store.get(['deletedNotes']);
   const deleted = Array.isArray(data.deletedNotes) ? data.deletedNotes : [];
   const now = Date.now();
-  const fresh = deleted.filter(n => !n.deletedAt || (now - n.deletedAt < SEVEN_DAYS_MS));
+  // 无 deletedAt 的历史数据保留，不做猜测性清理。
+  const expired = deleted.filter(n => n.deletedAt && now - n.deletedAt >= SEVEN_DAYS_MS);
+  const fresh = deleted.filter(n => !n.deletedAt || now - n.deletedAt < SEVEN_DAYS_MS);
   if (fresh.length !== deleted.length) {
-    isLocalChange = true;
+    purgeImagesOf(expired);
     Store.set({ deletedNotes: fresh });
   }
 }

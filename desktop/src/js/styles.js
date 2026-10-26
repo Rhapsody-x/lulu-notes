@@ -277,6 +277,15 @@ const APP_STYLES = `
     display: block; max-width: 100%; height: auto;
     margin: 6px 0; border-radius: 8px;
   }
+  /* 可点击放大的图片：给出明确的放大光标与悬停反馈 */
+  .note-textarea img.note-image {
+    cursor: zoom-in;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .note-textarea img.note-image:hover {
+    transform: scale(1.015);
+    box-shadow: 0 6px 18px -6px rgba(21, 101, 192, 0.45);
+  }
   .note-card.collapsed .note-textarea {
     max-height: 80px; overflow-y: hidden !important; 
     mask-image: linear-gradient(to bottom, black 60%, transparent 100%);

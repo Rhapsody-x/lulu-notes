@@ -7,12 +7,44 @@
 let currentExportFormat = 'word';
 
 // 备份 JSON
-exportJsonBtn.addEventListener('click', () => {
+exportJsonBtn.addEventListener('click', async () => {
   if (typeof saveNotes === 'function') saveNotes();
   const data = Store.readAll();
+
+  // 图片本体不在 localStorage 里，备份时一并打包成 base64，保证换机可恢复。
+  try {
+    const names = collectImageNames([
+      ...(Array.isArray(data.notes) ? data.notes : []),
+      ...(Array.isArray(data.deletedNotes) ? data.deletedNotes : [])
+    ]);
+    if (names.length) {
+      data.images = await invoke('read_images', { names });
+    }
+  } catch (err) {
+    console.error('打包图片失败:', err);
+  }
+
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   saveExportFile(blob, `notes-backup-${new Date().toISOString().slice(0,10)}.json`);
 });
+
+// 导出前把 data-image 引用换成内联 base64：导出的 .doc 是独立文件，
+// 离开本机后无法访问应用数据目录里的图片。
+async function inlineImagesForExport(html) {
+  const names = imageNamesFromHtml(html);
+  if (!names.length) return html || '';
+  let map = {};
+  try {
+    map = await invoke('read_images', { names });
+  } catch (err) {
+    console.error('读取导出图片失败:', err);
+  }
+  return String(html).replace(/<img\b([^>]*?)data-image="([^"]+)"([^>]*?)\/?>/g, (match, before, name, after) => {
+    const src = map && map[name];
+    if (!src) return '';
+    return `<img src="${src}"${before}${after}>`;
+  });
+}
 
 // 调出自定义选择导出面板
 exportWordBtn.addEventListener('click', () => openExport('word'));
@@ -95,22 +127,36 @@ function renderExportList() {
       tempDiv.innerHTML = n.content || '无内容';
       const plainText = tempDiv.innerText || tempDiv.textContent || '无内容';
 
-      el.innerHTML = `
-        <input type="checkbox" class="export-item-chk custom-chk" data-id="${n.id}" checked>
-        <div class="export-item-details">
-          <div class="export-item-content">${plainText}</div>
-          <div class="export-item-meta">${n.timestamp}</div>
-        </div>
-      `;
+      // 用 DOM 赋值而非字符串拼接：便签内容含 < & 等字符时不会破坏结构
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'export-item-chk custom-chk';
+      checkbox.dataset.id = n.id;
+      checkbox.checked = true;
+
+      const details = document.createElement('div');
+      details.className = 'export-item-details';
+
+      const contentEl = document.createElement('div');
+      contentEl.className = 'export-item-content';
+      contentEl.textContent = plainText;
+
+      const metaEl = document.createElement('div');
+      metaEl.className = 'export-item-meta';
+      metaEl.textContent = n.timestamp || '';
+
+      details.appendChild(contentEl);
+      details.appendChild(metaEl);
+      el.appendChild(checkbox);
+      el.appendChild(details);
 
       // 绑定点击这一项的详情部分时自动联动勾选
-      el.querySelector('.export-item-details').addEventListener('click', () => {
-        const checkbox = el.querySelector('.export-item-chk');
+      details.addEventListener('click', () => {
         checkbox.checked = !checkbox.checked;
         updateSelectAllState();
       });
 
-      el.querySelector('.export-item-chk').addEventListener('change', () => {
+      checkbox.addEventListener('change', () => {
         updateSelectAllState();
       });
 
@@ -118,7 +164,7 @@ function renderExportList() {
   });
 }
 
-doExportBtn.addEventListener('click', () => {
+doExportBtn.addEventListener('click', async () => {
   const checkedBoxes = exportList.querySelectorAll('.export-item-chk:checked');
   const selectedIds = Array.from(checkedBoxes).map(chk => parseInt(chk.dataset.id));
 
@@ -196,11 +242,10 @@ doExportBtn.addEventListener('click', () => {
             <tbody>
       `;
 
-      selectedNotes.forEach(note => {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = note.content || '';
-        const plainText = tempDiv.innerText || tempDiv.textContent || '无内容';
-
+    selectedNotes.forEach(note => {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = note.content || '';
+      const plainText = tempDiv.innerText || tempDiv.textContent || '无内容';
         // 👈 仅保留到“日”（去掉后面的时分秒）
         const fullTime = note.timestamp || '';
         const dateOnly = fullTime.split(' ')[0] || fullTime;
@@ -247,18 +292,19 @@ doExportBtn.addEventListener('click', () => {
         <h1>我的悬浮便签导出</h1>
     `;
 
-    selectedNotes.forEach(note => {
+    for (const note of selectedNotes) {
+      const body = await inlineImagesForExport(note.content || '');
       docContent += `
         <div class="note-container">
           <div class="note-header">
             时间：${note.timestamp} ${note.isPinned ? ' [已置顶]' : ''}
           </div>
           <div class="note-body">
-            ${note.content || '无内容'}
+            ${body || '无内容'}
           </div>
         </div>
       `;
-    });
+    }
 
     docContent += `</body></html>`;
 
@@ -291,6 +337,16 @@ if (importJsonBtn) {
       const patch = {};
       if (Array.isArray(data.notes)) patch.notes = data.notes;
       if (Array.isArray(data.deletedNotes)) patch.deletedNotes = data.deletedNotes;
+
+      // 备份里携带的图片按原文件名写回，便签 HTML 中的引用即可继续生效。
+      if (data.images && typeof data.images === 'object' && !Array.isArray(data.images)) {
+        try {
+          await invoke('write_images', { images: data.images });
+        } catch (err) {
+          console.error('恢复图片失败:', err);
+        }
+      }
+
       Store.set(patch);
       loadNotes();
       renderTrash();

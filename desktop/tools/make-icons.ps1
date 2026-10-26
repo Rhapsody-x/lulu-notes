@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
 $root    = Split-Path -Parent $PSScriptRoot
-$srcPath = Join-Path (Split-Path -Parent $root) 'icons\LLB.png'
+$srcPath = Join-Path $root 'src\assets\LLB.png'
 $outDir  = Join-Path $root 'src-tauri\icons'
 
 if (-not (Test-Path $srcPath)) { throw "找不到源图标: $srcPath" }

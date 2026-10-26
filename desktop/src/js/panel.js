@@ -40,7 +40,6 @@ const WIN = {
   current: { x: 100, y: 100, width: BUBBLE_SIZE, height: BUBBLE_SIZE }
 };
 
-let hasUserMovedPanel = false;
 let panelDragState = null;
 
 // --- 面板开合动画 ---
@@ -308,10 +307,9 @@ async function showPanel() {
     await refreshMetrics();
     WIN.panelHeight = panelHeightForWorkArea();
 
-    const restore = Store.get(['panelOpen', 'panelPos']);
+    const restore = Store.get(['panelPos']);
     let target;
     if (restore.panelPos && Number.isFinite(restore.panelPos.x) && Number.isFinite(restore.panelPos.y)) {
-      hasUserMovedPanel = true;
       // panelPos 记录的是面板本身左上角（与旧版本数据兼容），换算成窗口坐标。
       target = clampPanelWindowPosition(
         restore.panelPos.x - PANEL_SHADOW_PADDING,
@@ -331,7 +329,6 @@ async function showPanel() {
     );
 
     await applyWindowGeometry('panel', PANEL_WINDOW_WIDTH, panelWindowHeight(), target.x, target.y);
-    Store.set({ panelOpen: true });
     if (typeof closeExport === 'function') closeExport();
     if (typeof closeTrash === 'function') closeTrash();
 
@@ -380,17 +377,9 @@ async function hidePanel() {
     toggleBubble.classList.remove('hidden');
 
     await applyWindowGeometry('bubble', size.width, size.height, pos.x, pos.y);
-    Store.set({ panelOpen: false });
   } finally {
     panelTransitioning = false;
   }
-}
-
-// 确保面板位置在当前工作区内（坐标为原生窗口左上角）
-function ensurePanelInViewport() {
-  WIN.panelHeight = panelHeightForWorkArea();
-  const next = clampPanelWindowPosition(WIN.current.x, WIN.current.y);
-  scheduleWindowMove(next.x, next.y);
 }
 
 // 自动对齐到悬浮球上方/侧边（先按面板内容定位，再换算成窗口坐标）
@@ -401,7 +390,8 @@ function alignPanelToBubble() {
   let panelTop;
 
   if (isSideMode) {
-    // 贴边模式的原生窗口比页签宽 20px、高 32px，先取页签矩形再对齐。
+    // 贴边模式下原生窗口比页签宽 SIDE_SHADOW_LEFT(6px)、高 SIDE_SHADOW_Y*2(4px)，
+    // 先还原出页签矩形再对齐，避免阴影留白把面板挤偏。
     const tab = sideTabRectFromWindow(bubble);
     panelLeft = tab.x - PANEL_WIDTH - 12;
     panelTop = tab.y + (tab.height / 2) - (WIN.panelHeight / 2);
@@ -466,7 +456,6 @@ async function onPanelUp() {
   window.removeEventListener('mouseup', onPanelUp);
 
   if (moved) {
-    hasUserMovedPanel = true;
     await refreshMetrics();
     // panelPos 仍按面板内容左上角存储，兼容旧版本数据。
     Store.set({

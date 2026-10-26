@@ -1,0 +1,96 @@
+/* 图片预览窗口：窗口本身透明无边框，深色容器自绘圆角 */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+  font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #10151c;
+  border-radius: 14px;
+  cursor: grab;
+}
+
+#stage:active {
+  cursor: grabbing;
+}
+
+/* 原始尺寸模式：超出窗口时允许滚动查看 */
+#stage.scrollable {
+  overflow: auto;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+#view-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+#view-image.actual-size {
+  max-width: none;
+  max-height: none;
+}
+
+#btn-close {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.18s ease, background 0.18s ease;
+  z-index: 10;
+}
+
+#stage:hover #btn-close {
+  opacity: 1;
+}
+
+#btn-close:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+#hint {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  z-index: 10;
+}
+
+#hint.show {
+  opacity: 1;
+}

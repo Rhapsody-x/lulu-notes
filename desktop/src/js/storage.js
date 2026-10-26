@@ -76,3 +76,49 @@ const invoke = (command, args = {}) => {
   }
   return Tauri.core.invoke(command, args);
 };
+
+// ---- 图片资源解析 ----
+// 图片本体存在应用数据目录，便签 HTML 里只保留 data-image="images/xxx.png"。
+// 展示时通过 Tauri 资源协议把绝对路径转成可访问地址，不占用 localStorage。
+let imageBaseDir = '';
+
+function toAssetUrl(absolutePath) {
+  const normalized = String(absolutePath || '').replace(/\\/g, '/');
+  const core = Tauri.core;
+  if (core && typeof core.convertFileSrc === 'function') {
+    try {
+      return core.convertFileSrc(normalized);
+    } catch (err) {
+      console.error('资源地址转换失败:', err);
+    }
+  }
+  return normalized;
+}
+
+/** 相对引用（images/xxx.png）→ 可直接放进 img.src 的地址。 */
+function imageSrc(name) {
+  if (!name || !imageBaseDir) return '';
+  const file = String(name).replace(/^images[\\/]/, '');
+  return toAssetUrl(`${imageBaseDir}/${file}`);
+}
+
+/** 启动时取一次图片目录，后续拼接无需再走 IPC。 */
+async function initImageBase() {
+  try {
+    imageBaseDir = await invoke('images_base_dir');
+  } catch (err) {
+    console.error('读取图片目录失败:', err);
+  }
+}
+
+/** 从一段便签 HTML 中提取所有图片相对引用（去重）。 */
+function imageNamesFromHtml(html) {
+  const names = [];
+  if (!html) return names;
+  const pattern = /data-image="([^"]+)"/g;
+  let match;
+  while ((match = pattern.exec(html)) !== null) {
+    if (match[1] && names.indexOf(match[1]) === -1) names.push(match[1]);
+  }
+  return names;
+}

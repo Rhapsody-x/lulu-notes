@@ -1,4 +1,6 @@
 mod dialogs;
+mod images;
+mod viewer;
 
 use serde::Serialize;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
@@ -169,6 +171,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
 
 pub fn run() {
     tauri::Builder::default()
+        .manage(viewer::ViewerState::default())
         .invoke_handler(tauri::generate_handler![
             window_metrics,
             configure_window,
@@ -178,6 +181,15 @@ pub fn run() {
             quit_app,
             dialogs::save_export_file,
             dialogs::pick_import_file,
+            images::images_base_dir,
+            images::save_image,
+            images::delete_images,
+            images::gc_images,
+            images::read_images,
+            images::write_images,
+            viewer::open_image_viewer,
+            viewer::viewer_current_image,
+            viewer::close_viewer,
         ])
         .setup(|app| {
             build_tray(app)?;

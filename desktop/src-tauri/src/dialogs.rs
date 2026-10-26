@@ -157,6 +157,16 @@ pub struct ImportedFile {
     pub content: String,
 }
 
+/// Word / Excel 通过 HTML 伪格式打开时，没有 BOM 的 UTF-8 会被按系统本地代码页
+/// 解析，中文就会变成乱码。这类扩展名统一补 UTF-8 BOM。
+/// JSON 不能加：带 BOM 的 JSON 在 JSON.parse 时会直接报错。
+fn needs_utf8_bom(ext: &str) -> bool {
+    matches!(
+        ext.to_ascii_lowercase().as_str(),
+        "doc" | "xls" | "htm" | "html"
+    )
+}
+
 /// 弹出“另存为”对话框并写入 UTF-8 文本；取消时返回 None。
 #[tauri::command]
 pub fn save_export_file(
@@ -173,8 +183,12 @@ pub fn save_export_file(
 
     match save_dialog(&default_name, &filter_name, &ext, &title, owner)? {
         Some(path) => {
-            std::fs::write(&path, content.as_bytes())
-                .map_err(|e| format!("写入文件失败：{e}"))?;
+            let mut payload = Vec::with_capacity(content.len() + 3);
+            if needs_utf8_bom(&ext) {
+                payload.extend_from_slice(&[0xEF, 0xBB, 0xBF]);
+            }
+            payload.extend_from_slice(content.as_bytes());
+            std::fs::write(&path, &payload).map_err(|e| format!("写入文件失败：{e}"))?;
             Ok(Some(path.to_string_lossy().to_string()))
         }
         None => Ok(None),
