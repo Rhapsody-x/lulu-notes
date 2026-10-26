@@ -1,33 +1,47 @@
 # ================================================================
-#  release.ps1 - Build the signed NSIS bundle and produce latest.json
+#  release.ps1 - Build the signed NSIS bundle and produce the update manifests
 #
 #  What it does:
 #    1. Reads the version from tauri.conf.json
 #    2. Builds with TAURI_SIGNING_PRIVATE_KEY set (required for updater
 #       artifacts - the build fails without it)
-#    3. Copies the updater artifact to desktop/dist with an ASCII name
+#    3. Copies the installer to desktop/dist with an ASCII name
 #       (productName is Chinese, which breaks release asset URLs)
-#    4. Writes desktop/dist/latest.json for the updater endpoint
+#    4. Writes TWO manifests with identical content but different
+#       download URLs:
+#         desktop/dist/latest.json  -> GitHub asset, uploaded to the Release
+#         <repo>/latest.json        -> Gitee asset, committed to the repo
+#
+#  Why the Gitee manifest is a repo file:
+#    Gitee has no "releases/latest/download/<file>" permanent link, so the
+#    manifest cannot live in a Release (its URL would change with every tag).
+#    It is served from the raw URL instead:
+#      https://gitee.com/<GiteeRepo>/raw/<GiteeBranch>/latest.json
 #
 #  Usage:
 #    powershell -ExecutionPolicy Bypass -File tools\release.ps1
 #    powershell -ExecutionPolicy Bypass -File tools\release.ps1 -Notes "fix: ..."
 #    powershell -ExecutionPolicy Bypass -File tools\release.ps1 -SkipBuild
 #
-#  Then upload dist\* to the GitHub release tagged v<version>.
+#  Publish order matters (see the reminder printed at the end):
+#    1. create the Release on Gitee and upload the installer FIRST
+#    2. only then commit + push latest.json
+#    Doing it the other way round makes every client request a 404.
 # ================================================================
 param(
   [string]$Notes = "",
   [switch]$SkipBuild,
   [string]$Repo = "Rhapsody-x/lulu-notes",
-  # Prefix of the mirror used for users without a proxy. Must be reachable
-  # from mainland China and must accept "https://github.com/..." as a suffix.
-  [string]$MirrorPrefix = "https://gh-proxy.com/"
+  # Mainland-friendly mirror. The manifest is a repo file served over raw,
+  # the installer is a Release asset.
+  [string]$GiteeRepo = "xu0523/lulu-notes",
+  [string]$GiteeBranch = "master"
 )
 
 $ErrorActionPreference = "Stop"
 
-$root     = Split-Path -Parent $PSScriptRoot
+$root     = Split-Path -Parent $PSScriptRoot          # desktop/
+$repoRoot = Split-Path -Parent $root                  # repository root
 $srcTauri = Join-Path $root "src-tauri"
 $confPath = Join-Path $srcTauri "tauri.conf.json"
 $dist     = Join-Path $root "dist"
@@ -89,14 +103,13 @@ $assetName = "lulu-notes_${version}_x64-setup.exe"
 Copy-Item $artifact.FullName (Join-Path $dist $assetName) -Force
 Copy-Item $sigPath (Join-Path $dist "$assetName.sig") -Force
 
-$signature = (Get-Content $sigPath -Raw).Trim()
-$url = "https://github.com/$Repo/releases/download/v$version/$assetName"
+# Drop the manifest from the previous (gh-proxy) scheme if it is still around.
+$staleCn = Join-Path $dist "latest-cn.json"
+if (Test-Path $staleCn) { Remove-Item $staleCn -Force }
 
-# github.com is unreachable from mainland China without a proxy, so the app
-# ships two manifests with identical content but different download URLs:
-#   latest-cn.json -> mirror URL (no proxy needed)
-#   latest.json    -> official GitHub URL (used as the fallback endpoint)
-$urlMirror = "$MirrorPrefix$url"
+$signature = (Get-Content $sigPath -Raw).Trim()
+$urlGithub = "https://github.com/$Repo/releases/download/v$version/$assetName"
+$urlGitee = "https://gitee.com/$GiteeRepo/releases/download/v$version/$assetName"
 $pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 
 function New-Manifest([string]$downloadUrl) {
@@ -115,19 +128,27 @@ function New-Manifest([string]$downloadUrl) {
 
 # UTF-8 without BOM: a BOM would break the updater's JSON parser.
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-$json = New-Manifest $url | ConvertTo-Json -Depth 6
-$jsonCn = New-Manifest $urlMirror | ConvertTo-Json -Depth 6
-[System.IO.File]::WriteAllText((Join-Path $dist "latest.json"), $json, $utf8NoBom)
-[System.IO.File]::WriteAllText((Join-Path $dist "latest-cn.json"), $jsonCn, $utf8NoBom)
+$jsonGithub = New-Manifest $urlGithub | ConvertTo-Json -Depth 6
+$jsonGitee = New-Manifest $urlGitee | ConvertTo-Json -Depth 6
+
+$githubManifest = Join-Path $dist "latest.json"
+$giteeManifest = Join-Path $repoRoot "latest.json"
+[System.IO.File]::WriteAllText($githubManifest, $jsonGithub, $utf8NoBom)
+[System.IO.File]::WriteAllText($giteeManifest, $jsonGitee, $utf8NoBom)
 
 Write-Host ""
 Write-Host "Release assets ready in: $dist"
 Get-ChildItem $dist | Select-Object Name, @{ n = "KB"; e = { [math]::Round($_.Length / 1KB, 1) } } | Format-Table -AutoSize
 
-Write-Host "Upload these to the GitHub release tagged v$version :"
-Write-Host "  latest.json"
-Write-Host "  latest-cn.json"
+Write-Host "Publish order (do not swap these two steps):"
+Write-Host "  1) Gitee release v$version : upload $assetName"
+Write-Host "     https://gitee.com/$GiteeRepo/releases/new?tag=v$version"
+Write-Host "  2) Commit and push the manifest:"
+Write-Host "     git add latest.json; git commit -m `"release: v$version`"; git push gitee HEAD:$GiteeBranch"
+Write-Host ""
+Write-Host "Also upload to GitHub (fallback endpoint):"
+Write-Host "  $githubManifest"
 Write-Host "  $assetName"
 Write-Host ""
-Write-Host "Verify (no proxy needed):"
-Write-Host "  ${MirrorPrefix}https://github.com/$Repo/releases/latest/download/latest-cn.json"
+Write-Host "Verify after pushing (no proxy needed):"
+Write-Host "  https://gitee.com/$GiteeRepo/raw/$GiteeBranch/latest.json"

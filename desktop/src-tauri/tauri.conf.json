@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "噜噜便签",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "identifier": "com.lulu.floatingnotes",
   "build": {
     "frontendDist": "../src"
@@ -67,7 +67,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIxQjI3Qzk5QTZBNTc5MjQKUldRa2VhV21tWHl5SWJPUHU4UlhMMDNCSHNQVms1UjFORnZqVDdtQWF4ZlI5Yk0wNm1iRDJERHEK",
       "endpoints": [
-        "https://gh-proxy.com/https://github.com/Rhapsody-x/lulu-notes/releases/latest/download/latest-cn.json",
+        "https://gitee.com/xu0523/lulu-notes/raw/master/latest.json",
         "https://github.com/Rhapsody-x/lulu-notes/releases/latest/download/latest.json"
       ],
       "requireSignedVersion": true,
