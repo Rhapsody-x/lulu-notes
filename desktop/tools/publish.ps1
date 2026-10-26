@@ -33,6 +33,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# git 输出的是 UTF-8，而 Windows PowerShell 5.1 默认按控制台代码页（中文系统是 GBK）
+# 解码原生命令的输出，直接读会把中文提交信息变成乱码。统一成 UTF-8。
+try {
+  [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+  $OutputEncoding = [System.Text.Encoding]::UTF8
+} catch {
+  # 没有控制台时（如被调度器拉起）忽略即可，不影响功能。
+}
+
 $GiteeRepo    = "xu0523/lulu-notes"
 $GiteeBranch  = "master"
 $GithubRepo   = "Rhapsody-x/lulu-notes"
