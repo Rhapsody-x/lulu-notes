@@ -406,6 +406,16 @@ if (checkUpdateBtn) {
   });
 }
 
+// 菜单底部显示当前版本号：升级后可以直接看出跑的是哪个版本
+const versionLabel = shadow.getElementById('app-version');
+if (versionLabel && Tauri.app && typeof Tauri.app.getVersion === 'function') {
+  Tauri.app.getVersion()
+    .then(version => {
+      if (version) versionLabel.textContent = `v${version}`;
+    })
+    .catch(() => {});
+}
+
 // 面板从悬浮球展开后，补弹之前被推迟的提示
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);

@@ -186,6 +186,15 @@ const APP_STYLES = `
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .dropdown-menu.show { opacity: 1; visibility: visible; transform: translateY(0); }
+
+  /* 菜单底部的版本号，便于确认当前跑的是哪个版本 */
+  .menu-version {
+    margin-top: 4px; padding: 6px 12px 2px;
+    border-top: 1px solid rgba(21, 101, 192, 0.10);
+    font-size: 11px; color: #90A4AE; text-align: right;
+    letter-spacing: 0.02em;
+  }
+  .menu-version:empty { display: none; }
   
   .dropdown-item {
     display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px;
