@@ -61,14 +61,14 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 # ---------------- 输出与工具 ----------------
 
 function Fail([string]$msg) {
-  Write-Host ""
-  Write-Host "✗ $msg" -ForegroundColor Red
+  Write-Host "`n✗ $msg" -ForegroundColor Red
   exit 1
 }
 
+# 空行用 "`n" 前缀写进字符串里，而不是单独 Write-Host ""。
+# 后者在输出被重定向（例如被其他程序捕获）时不产生换行，会跟上一行粘在一起。
 function Step([string]$msg) {
-  Write-Host ""
-  Write-Host "==> $msg" -ForegroundColor Cyan
+  Write-Host "`n==> $msg" -ForegroundColor Cyan
 }
 
 function Info([string]$msg) {
@@ -200,8 +200,7 @@ $assetPath = Join-Path $dist $assetName
 $urlGitee  = "https://gitee.com/$GiteeRepo/releases/download/v$Version/$assetName"
 $urlGithub = "https://github.com/$GithubRepo/releases/download/v$Version/$assetName"
 
-Write-Host ""
-Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
+Write-Host "`n------------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host " 版本      $currentVersion  ->  $Version"
 Write-Host " 说明      $Notes"
 Write-Host " 安装包    $assetName"
@@ -209,8 +208,7 @@ Write-Host " 下载地址  $urlGitee"
 Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
 
 if ($DryRun) {
-  Write-Host ""
-  Write-Host "DryRun：只做检查，未修改任何文件。" -ForegroundColor Yellow
+  Write-Host "`nDryRun：只做检查，未修改任何文件。" -ForegroundColor Yellow
   exit 0
 }
 
@@ -422,18 +420,14 @@ if ($verified) {
 
 # ---------------- 完成 ----------------
 
-Write-Host ""
-Write-Host "============================================================" -ForegroundColor Green
+Write-Host "`n============================================================" -ForegroundColor Green
 Write-Host " v$Version 已发布" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
-Write-Host ""
-Write-Host " 发行版页面  https://gitee.com/$GiteeRepo/releases/tag/v$Version"
+Write-Host "`n 发行版页面  https://gitee.com/$GiteeRepo/releases/tag/v$Version"
 Write-Host " 更新清单    https://gitee.com/$GiteeRepo/raw/$GiteeBranch/latest.json"
-Write-Host ""
-Write-Host " 已装旧版的用户：" -ForegroundColor DarkGray
+Write-Host "`n 已装旧版的用户：" -ForegroundColor DarkGray
 Write-Host "   * 当天开过程序的话，自动检查有 24 小时节流，需手动点「检查更新」" -ForegroundColor DarkGray
 Write-Host "   * 第二天起开程序会自动发现" -ForegroundColor DarkGray
-Write-Host ""
-Write-Host " 可选：把 dist/latest.json 与 $assetName 也传到 GitHub Release" -ForegroundColor DarkGray
+Write-Host "`n 可选：把 dist/latest.json 与 $assetName 也传到 GitHub Release" -ForegroundColor DarkGray
 Write-Host "       https://github.com/$GithubRepo/releases/new?tag=v$Version" -ForegroundColor DarkGray
 Write-Host ""
