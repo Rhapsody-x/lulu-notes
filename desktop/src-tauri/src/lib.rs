@@ -1,5 +1,6 @@
 mod dialogs;
 mod images;
+mod updater;
 mod viewer;
 
 #[cfg(windows)]
@@ -186,9 +187,13 @@ fn open_external_url(_url: String) -> Result<(), String> {
 fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
     let show_item = MenuItem::with_id(app, "show-panel", "打开便签", true, None::<&str>)?;
     let new_item = MenuItem::with_id(app, "new-note", "新建便签", true, None::<&str>)?;
+    let update_item = MenuItem::with_id(app, "check-update", "检查更新", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let quit_item = MenuItem::with_id(app, "quit", "退出噜噜便签", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show_item, &new_item, &separator, &quit_item])?;
+    let menu = Menu::with_items(
+        app,
+        &[&show_item, &new_item, &update_item, &separator, &quit_item],
+    )?;
 
     let mut builder = TrayIconBuilder::new()
         .menu(&menu)
@@ -200,6 +205,10 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
             }
             "new-note" => {
                 let _ = app.emit("new-note", ());
+            }
+            "check-update" => {
+                // 由前端负责弹面板与展示进度，这里只转发意图。
+                let _ = app.emit("check-update", ());
             }
             "quit" => app.exit(0),
             _ => {}
@@ -225,7 +234,9 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(viewer::ViewerState::default())
+        .manage(updater::UpdateState::default())
         .invoke_handler(tauri::generate_handler![
             window_metrics,
             configure_window,
@@ -245,9 +256,18 @@ pub fn run() {
             viewer::open_image_viewer,
             viewer::viewer_current_image,
             viewer::close_viewer,
+            updater::check_update,
+            updater::download_update,
+            updater::install_pending_update,
+            updater::pending_update,
+            updater::discard_pending_update,
         ])
         .setup(|app| {
             build_tray(app)?;
+
+            // 恢复上次已下载但未安装的更新，供前端启动时提示。
+            let handle = app.handle().clone();
+            updater::restore_on_startup(&handle, &handle.state::<updater::UpdateState>());
 
             if let Some(window) = app.get_webview_window("main") {
                 let window_for_close = window.clone();

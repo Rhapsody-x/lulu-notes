@@ -14,3 +14,7 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# 更新签名私钥：绝不能进仓库（正常存放在 ~/.tauri/，这里只是兜底）
+*.key
+*.key.pub

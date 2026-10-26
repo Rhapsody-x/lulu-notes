@@ -831,4 +831,43 @@ const APP_STYLES = `
     font-weight: 600;
   }
   .update-btn.primary:hover { background: #1565C0; }
+
+  /* 后台下载进度条：贴面板底部，不遮挡便签内容 */
+  .update-progress {
+    position: fixed;
+    left: 50%;
+    bottom: 14px;
+    width: calc(100% - 32px);
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+    opacity: 0;
+    transform: translate(-50%, 12px);
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 60;
+  }
+  .update-progress.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  .update-progress-label {
+    font-size: 12px;
+    color: #37474F;
+    margin-bottom: 6px;
+  }
+  .update-progress-bar {
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(21, 101, 192, 0.14);
+    overflow: hidden;
+  }
+  .update-progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: #1976D2;
+    transition: width 0.2s ease;
+  }
 `;
